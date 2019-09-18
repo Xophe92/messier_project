@@ -1,0 +1,3 @@
+sphinx
+PyGame
+sphinx_rtd_theme
