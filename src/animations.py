@@ -54,7 +54,7 @@ class Spritesheet:
         surface.blit(self.sheet, (x + self.handle[handle][0], y + self.handle[handle][1]), self.cells[cell_index])
 
 
-s = Spritesheet("Catalog.jpg", 10, 11)
+s = Spritesheet("../assets/Catalog.jpg", 10, 11)
 
 index = 0
 
