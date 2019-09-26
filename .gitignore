@@ -2,3 +2,4 @@ venv/*
 doc/_build
 .idea
 *.pyc
+*.pkl

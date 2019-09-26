@@ -42,4 +42,12 @@ data['DEC_deg'] = data['Declination_deg'] + data['Declination_min']/60
 data.drop(coordinates, axis=1, inplace=True)
 
 
+discover_data = pd.read_pickle(config.DISCOVER_FILE)
+
+print(data["M#"])
+print(discover_data["M#"])
+
+data = pd.concat([data, discover_data], sort=False)
+print(data.columns)
+
 data.to_pickle(config.PIKLE_FILE)

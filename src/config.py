@@ -1,4 +1,5 @@
 PIKLE_FILE = "../data/messier.pkl"
+DISCOVER_FILE = "../data/decouverte.pkl"
 background = "../assets/StarChart.svg"
 host="127.0.0.1"
 port=5001
