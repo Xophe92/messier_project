@@ -1,9 +1,12 @@
 import config
 import flask
 import dash
+import dash_ui as dui
 import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Input, Output
+
+from flask_caching import Cache
 
 import plotly.graph_objs as go
 
@@ -15,18 +18,49 @@ messier_catalog = pd.read_pickle(config.PIKLE_FILE)
 messier_catalog["Type"] = messier_catalog["Type"].astype(str)
 
 app = dash.Dash('Catalogue de messier')
+cache = Cache(app.server, config={'CACHE_TYPE': 'null'})
+
+
 
 text_style = dict(color='#444', fontFamily='sans-serif', fontWeight=300)
 
 
 
-
-@app.server.route('{}<image_path>.png'.format(config.static_endpoint))
+@app.server.route('{}<image_path>'.format(config.static_endpoint))
 def serve_image(image_path):
-    image_name = '{}.png'.format(image_path)
+    image_name = '{}'.format(image_path)
     return flask.send_from_directory("../assets/", image_name)
 
+def get_picture(messier_object="M42"):
+    picture = go.Figure()
 
+    y_min = -90
+    y_max = 90
+
+
+    picture.update_layout(
+        images=[
+            go.layout.Image(
+                source=config.static_url + messier_object +".jpg",
+                xref="x",
+                yref="y",
+                x=0,
+                y=y_max,
+                sizex=24,
+                sizey=y_max-y_min,
+                sizing="contain",
+                opacity=1,
+                layer="above")
+        ]
+    )
+    picture.update_layout(
+        autosize=False,
+        width=900,
+        height=900)
+
+    picture.update_xaxes(range=[0, 24])
+    picture.update_yaxes(range=[y_min, y_max])
+    return picture
 
 def get_sky_map(_opacity=3):
     sky_map = go.Figure()
@@ -116,13 +150,13 @@ def get_discover_timeline():
 
     return discover_timeline
 
-
 app.layout = html.Div([
         html.H2('Messier Mapper', style=text_style),
 
+
+        dcc.Graph(id="image_place_holder", figure=get_picture()),
+        dcc.Graph(id='sky_map', figure=get_sky_map(), style={"position":"absolute", "top":50, "left":820}),
         dcc.Slider(id='slider_opacity', min=0,max=10,marks={i: f"{i*10}%" for i in range(11)}, value=3),
-        html.Div(id="image_place_holder", children="", style={"width":400, "height":300, "background-image": ""}),
-        dcc.Graph(id='sky_map', figure=get_sky_map()),
         dcc.Graph(id='discover_timeline', figure=get_discover_timeline())
     ])
 
@@ -132,17 +166,20 @@ app.layout = html.Div([
     [Input(component_id='slider_opacity', component_property='value')]
 )
 def set_opacity(_opacity):
-    print(_opacity)
     return get_sky_map(_opacity)
 
 
 @app.callback(
-    Output(component_id='image_place_holder', component_property='style'),
+    Output(component_id='image_place_holder', component_property='figure'),
     [Input(component_id='sky_map', component_property='clickData')]
 )
-def set_opacity(_clickdata):
-    print(config.static_url+_clickdata["points"][0]["text"]+".jpg")
-    return {"width":400, "height":300, "background-image":config.static_url+_clickdata["points"][0]['text']+".jpg"}
+def set_picture(_clickdata):
+    try:
+        return get_picture(_clickdata["points"][0]['text'])
+    except:
+        return get_picture()
+
+
 
 app.server.run(config.host, config.port)
 
