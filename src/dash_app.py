@@ -5,7 +5,7 @@ import dash_ui as dui
 import dash_html_components as html
 import dash_core_components as dcc
 from dash.dependencies import Input, Output
-
+import dash_bootstrap_components as dbc
 from flask_caching import Cache
 
 import plotly.graph_objs as go
@@ -17,7 +17,7 @@ import pandas as pd
 messier_catalog = pd.read_pickle(config.PIKLE_FILE)
 messier_catalog["Type"] = messier_catalog["Type"].astype(str)
 
-app = dash.Dash('Catalogue de messier')
+app = dash.Dash('Catalogue de messier', external_stylesheets=[dbc.themes.BOOTSTRAP])
 cache = Cache(app.server, config={'CACHE_TYPE': 'null'})
 
 
@@ -142,22 +142,51 @@ def get_discover_timeline():
         )
 
 
-    discover_timeline.update_layout(
-        autosize=False,
-        width=1700,
-        height=500)
-
 
     return discover_timeline
 
+def get_discover_per_magnitude():
+    discover_per_magnitude = go.Figure()
+
+    colors = ["#001f3f", "#0074d9", "#3d9970", "#111111", "#01ff70", "#ffdc00", "#ff851B", "#ff4136", "#85144b", "#f012be", "#b10dc9", "#AAAAAA", "#111111"]
+    for ind, type_object in enumerate(messier_catalog["Type"].unique().tolist()):
+        filtered_data = messier_catalog[messier_catalog["Type"] == type_object]
+
+        discover_per_magnitude.add_trace(
+            go.Scatter(
+                x=filtered_data["Date_decouverte"],
+                y=filtered_data["Aparent_Magnitude"],
+                text=filtered_data["M#"] ,
+                name=type_object,
+                opacity=1,
+                mode="markers",
+                marker={
+                    'size': 5,
+                    'line': {"width": 1},
+                    'color': colors[ind]
+                }
+            )
+        )
+
+
+
+    return discover_per_magnitude
+
+
 app.layout = html.Div([
-        html.H2('Messier Mapper', style=text_style),
+        dbc.Row([
+            dbc.Col(dcc.Graph(id="image_place_holder", figure=get_picture()), align="center"),
+            dbc.Col([
+                dcc.Graph(id='sky_map', figure=get_sky_map()),
+                dcc.Slider(id='slider_opacity', min=0,max=10,marks={i: f"{i*10}%" for i in range(11)}, value=3)
+                ]),
+        ]),
 
 
-        dcc.Graph(id="image_place_holder", figure=get_picture()),
-        dcc.Graph(id='sky_map', figure=get_sky_map(), style={"position":"absolute", "top":50, "left":820}),
-        dcc.Slider(id='slider_opacity', min=0,max=10,marks={i: f"{i*10}%" for i in range(11)}, value=3),
-        dcc.Graph(id='discover_timeline', figure=get_discover_timeline())
+        dbc.Row([
+            dbc.Col(dcc.Graph(id='discover_timeline', figure=get_discover_timeline())),
+            dbc.Col(dcc.Graph(id='discover_per_magnitude', figure=get_discover_per_magnitude()))
+        ]),
     ])
 
 
@@ -171,9 +200,18 @@ def set_opacity(_opacity):
 
 @app.callback(
     Output(component_id='image_place_holder', component_property='figure'),
-    [Input(component_id='sky_map', component_property='clickData')]
+    [Input(component_id='sky_map', component_property='clickData'),
+     Input(component_id='discover_timeline', component_property='clickData'),
+     Input(component_id='discover_per_magnitude', component_property='clickData')
+     ]
 )
-def set_picture(_clickdata):
+def set_picture(_clickdata1, _clickdata2, _clickdata3):
+    if not _clickdata1 is None:
+        _clickdata = _clickdata1
+    if not _clickdata2 is None:
+        _clickdata = _clickdata2
+    if not _clickdata3 is None:
+        _clickdata = _clickdata3
     try:
         return get_picture(_clickdata["points"][0]['text'])
     except:
